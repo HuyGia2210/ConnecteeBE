@@ -13,18 +13,19 @@ public interface UserService {
 //    AppUser findById(int theId);
 /// /////////////////////////
     Account saveAccount(Account appUser);
-//    Role saveRole (Role role);
-
     AppUser saveAppUser(AppUser appUser);
 
     /// /////////////////////////
-//    void addRoleToUser(String username, String roleName);
     String verify (String username, String password);
-
     String verifyWithoutAuth(String username);
 
     /// /////////////////////////
     void deleteById(String theId);
     void disconnect (String username);
-    List<Optional<AppUser>> findConnectedUsers(String username);
+    void connect (String username);
+    boolean isOnline (String username);
+
+    List<String> findConnectedUsernames(String username);
+    List<String> findFriendByUsernames(String username);
+    List<AppUser> findAppUserFriendByUsernames(String username);
 }

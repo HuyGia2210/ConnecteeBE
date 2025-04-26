@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Le Tran Gia Huy
@@ -36,6 +38,7 @@ public class UserServiceImpl implements UserService{
     private AuthenticationManager authenticationManager;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
     private JwtService jwtService;
+    private final Set<String> onlineUsers = ConcurrentHashMap.newKeySet();
 
 
     @Autowired
@@ -50,22 +53,6 @@ public class UserServiceImpl implements UserService{
         jwtService = theJwtService;
         appUserRepository = theAppUserRepository;
     }
-
-//    @Override
-//    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-//        AppUser appUser = appUserRepository.findByUsername(username);
-//        if(appUser == null) {
-//            log.error("User not found in the database");
-//            throw new UsernameNotFoundException("User not found in the database");
-//        }else{
-//            log.info("User found in the database: " + username);
-//            Collection<SimpleGrantedAuthority> auths = new ArrayList<>();
-//            appUser.getRoles().forEach(role -> {
-//                auths.add(new SimpleGrantedAuthority(role.getRoleName()));
-//            });
-//            return new org.springframework.security.core.userdetails.User(appUser.getUsername(), appUser.getPassword(), auths);
-//        }
-//    }
 
     @Override
     public List<Account> findAll() {
@@ -84,41 +71,93 @@ public class UserServiceImpl implements UserService{
         return appUserRepository.save(appUser);
     }
 
-//    @Override
-//    public Role saveRole(Role role) {
-//        log.info("Saving role: " + role);
-//        return roleRepository.save(role);
-//    }
-
     public void disconnect (String username) {
         var account = accountRepository.findByUsername(username);
+        onlineUsers.remove(username);
         if(account != null){
             account.setStatus(Status.OFFLINE);
             accountRepository.save(account);
         }
     }
 
-    public List<Optional<AppUser>> findFriendUsers(String username) {
-        AppUser appUser = appUserRepository.findAppUserByUsername(username);
-        List<String> friendNickNames = appUser.getFriendNickNames();
-        List<Optional<AppUser>> temp = new ArrayList<>();
-        friendNickNames.forEach(name -> {
-            temp.add(appUserRepository.findById(name));
-        });
-        return temp;
+    public void connect (String username) {
+        var account = accountRepository.findByUsername(username);
+        onlineUsers.add(username);
+        if(account != null){
+            account.setStatus(Status.ONLINE);
+            accountRepository.save(account);
+        }
     }
 
-    public List<Optional<AppUser>> findConnectedUsers(String username) {
-        AppUser appUser = appUserRepository.findAppUserByUsername(username);
-        List<String> friendNickNames = appUser.getFriendNickNames();
-        List<Optional<AppUser>> temp = new ArrayList<>();
-        friendNickNames.forEach(name -> {
-            temp.add(appUserRepository.findById(name));
-        });
-        return temp;
+    public boolean isOnline(String username) {
+        return onlineUsers.contains(username);
     }
 
-    //    void addRoleToUser(String username, String roleName);
+    public List<AppUser> findAppUserFriendByUsernames(String username) {
+        AppUser appUser = appUserRepository.findAppUserByUsername(username);
+        if (appUser == null) return List.of();
+
+        List<String> friendNicknames = appUser.getFriendNickNames();
+        return appUserRepository.findAllById(friendNicknames);
+    }
+
+
+    public List<String> findFriendByUsernames(String username) {
+        // 1. Tìm AppUser từ username → accId → AppUser
+        AppUser appUser = appUserRepository.findAppUserByUsername(username);
+        if (appUser == null) return List.of();
+
+        List<String> friendNicknames = appUser.getFriendNickNames();
+        List<String> friendUsernames = new ArrayList<>();
+
+        for (String nickname : friendNicknames) {
+            Optional<AppUser> friendOpt = appUserRepository.findById(nickname);
+
+            if (friendOpt.isPresent()) {
+                String accId = friendOpt.get().getAccId();
+                Optional<Account> accountOpt = accountRepository.findById(accId);
+
+                accountOpt.ifPresent(account ->
+                        friendUsernames.add(account.getUsername())
+                );
+            }
+        }
+
+        return friendUsernames;
+    }
+
+
+    public List<String> findConnectedUsernames(String username) {
+        // 1. Tìm AppUser qua username (qua accId)
+        AppUser appUser = appUserRepository.findAppUserByUsername(username);
+        if (appUser == null) return List.of();
+
+        List<String> friendNicknames = appUser.getFriendNickNames();
+        List<String> connectedUsernames = new ArrayList<>();
+
+        // 2. Duyệt từng nickname bạn bè
+        for (String nickname : friendNicknames) {
+            Optional<AppUser> friendOpt = appUserRepository.findById(nickname);
+
+            if (friendOpt.isPresent()) {
+                String accId = friendOpt.get().getAccId();
+
+                // Tìm Account qua accId dùng findById()
+                Optional<Account> accountOpt = accountRepository.findById(accId);
+
+                if (accountOpt.isPresent()) {
+                    String friendUsername = accountOpt.get().getUsername();
+
+                    if (isOnline(friendUsername)) {
+                        connectedUsernames.add(friendUsername);
+                    }
+                }
+            }
+        }
+
+        return connectedUsernames;
+    }
+
     @Override
     public String verify(String username, String password) {
         Authentication auth = authenticationManager.authenticate(
@@ -138,13 +177,6 @@ public class UserServiceImpl implements UserService{
         return jwtService.generateToken(username);
     }
 
-//    @Override
-//    public void addRoleToUser(String username, String roleName) {
-//        log.info("Adding role " + roleName +" to user: " + username);
-//        AppUser appUser = appUserRepository.findByUsername(username);
-//        Role role = roleRepository.findByRoleName(roleName);
-//        appUser.getRoles().add(role);
-//    }
 
     @Override
     public void deleteById(String theId) {

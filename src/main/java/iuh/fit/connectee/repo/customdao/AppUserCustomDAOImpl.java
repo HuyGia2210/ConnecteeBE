@@ -32,4 +32,9 @@ public class AppUserCustomDAOImpl implements AppUserCustomDAO {
         query.addCriteria(Criteria.where("accId").is(accId));
         return mongoTemplate.findOne(query, AppUser.class);
     }
+
+    @Override
+    public AppUser findAppUserByAccId(String accId) {
+        return null;
+    }
 }

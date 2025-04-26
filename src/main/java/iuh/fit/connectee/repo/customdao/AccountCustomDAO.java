@@ -8,6 +8,8 @@ import iuh.fit.connectee.model.Account;
  * @project gslendarBK
  * @package gslendar.gslendarbk.repository.customdao
  */
+
+
 public interface AccountCustomDAO {
 
     Account findByUsername(String username);

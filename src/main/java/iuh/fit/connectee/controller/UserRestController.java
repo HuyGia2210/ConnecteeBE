@@ -2,6 +2,7 @@ package iuh.fit.connectee.controller;
 
 import iuh.fit.connectee.model.Account;
 import iuh.fit.connectee.model.AppUser;
+import iuh.fit.connectee.model.misc.Gender;
 import iuh.fit.connectee.model.misc.Status;
 import iuh.fit.connectee.repo.AccountRepository;
 import iuh.fit.connectee.service.JwtService;
@@ -20,6 +21,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,13 +32,13 @@ import java.util.Optional;
  * @package gslendar.gslendarbk.controller
  */
 
-@Controller @RestController @RequiredArgsConstructor @RequestMapping("/api/user")
+@RestController @RequiredArgsConstructor @RequestMapping("/api/user")
 public class UserRestController {
     private final AccountRepository accountRepository;
     private final UserService userService;
     private final JwtService jwtService;
 
-    @GetMapping("/connected-users")
+    @GetMapping("/friend-list")
     public ResponseEntity<?> findConnectedUser(HttpServletRequest request) {
         // 1️⃣ Lấy JWT token từ cookie
         String token = null;
@@ -63,18 +65,12 @@ public class UserRestController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT không hợp lệ");
         }
 
-        // 4️⃣ Tìm danh sách user đang kết nối
-        List<AppUser> connectedUsers = userService.findConnectedUsers(username)
-                .stream()
-                .flatMap(Optional::stream) // Tránh lỗi nếu Optional rỗng
-                .toList();
-        return ResponseEntity.ok(connectedUsers);
+        return ResponseEntity.ok(userService.findAppUserFriendByUsernames(username));
     }
 
 
     @PostMapping("/register")
     public ResponseEntity<?> saveUser(@RequestBody RegisterRequest requestForm, HttpServletResponse response) {
-//        URI uri = URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/api/user/register").toUriString());
         Account tempAcc = new Account();
         tempAcc.setUsername(requestForm.username);
         tempAcc.setPassword(requestForm.password);
@@ -86,14 +82,17 @@ public class UserRestController {
         tempUser.setFullName(requestForm.fullName);
         tempUser.setEmail(requestForm.email);
         tempUser.setAccId(createdAcc.getAccId());
+        tempUser.setGender(requestForm.gender);
+        tempUser.setDob(requestForm.dob);
         AppUser savedAppUser = userService.saveAppUser(tempUser);
+        System.out.println(savedAppUser);
 
         String token  = userService.verifyWithoutAuth(createdAcc.getUsername());
         // Tạo HTTP-only cookie
         Cookie cookie = new Cookie("jwt", token);
 
         final ResponseCookie responseCookie = ResponseCookie
-                .from("jwtAdvanced", token)
+                .from("jwt", token)
                 .secure(true)
                 .httpOnly(true)
                 .path("/")
@@ -102,36 +101,29 @@ public class UserRestController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
-        /**
-         * Đoạn code sau đây không chạy, chỉ để lại để tham khảo sau này
-         */
-
-        if(false){
-            cookie.setHttpOnly(true);
-            cookie.setSecure(true); // Chỉ gửi trên HTTPS
-            cookie.setPath("/"); // Cookie áp dụng cho toàn bộ trang web
-            cookie.setMaxAge(10 * 24 * 60 * 60); // 10 ngày
-
-            // Đính kèm cookie vào response
-            response.setHeader("Set-Cookie", "key=value; HttpOnly; SameSite=strict");
-        }
-        /// //////////////////////////////////////////////////////////////////////////////////////
-
         return ResponseEntity.ok(token);
 
     }
 
-//    @PostMapping("/role/save")
-//    public ResponseEntity<Role> saveRole(@RequestBody Role role) {
-//        URI uri = URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/api/user/role/save").toUriString());
-//        return ResponseEntity.created(uri).body(userService.saveRole(role));
-//    }
+    @GetMapping("/auth/check")
+    @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+    public ResponseEntity<?> checkAuth(HttpServletRequest request) {
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        if (token != null && jwtService.validateTokenWithoutUserDetail(token)) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
 
-//    @PostMapping("/role/saveRoleToUser")
-//    public ResponseEntity<Role> saveRoleToUser(@RequestBody RoleToUserForm form) {
-//        userService.addRoleToUser(form.getUsername(), form.getRoleName());
-//        return ResponseEntity.ok().build();
-//    }
 
     @GetMapping("/")
     @CrossOrigin(origins = "http://localhost:5173")
@@ -177,12 +169,14 @@ public class UserRestController {
         return ResponseEntity.ok("Logged out successfully");
     }
     @Data
-    class RegisterRequest {
-        private String nickName;
-        private String fullName;
+    static class RegisterRequest {
         private String username;
-        private String password;
+        private String fullName;
+        private String nickName;
+        private LocalDate dob;
+        private Gender gender;
         private String email;
+        private String password;
     }
 }
 

@@ -43,17 +43,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private JwtService jwtService;
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
+    @Autowired
+    private JwtHandshakeInterceptor jwtHandshakeInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
+                .addInterceptors(jwtHandshakeInterceptor)
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/user", "/topic");
+        registry.enableSimpleBroker("/queue", "/topic");
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }
@@ -79,30 +82,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    // Lấy HttpServletRequest từ session
-                    HttpServletRequest request = ((ServletServerHttpRequest) accessor.getSessionAttributes().get("HTTP_REQUEST")).getServletRequest();
-                    Cookie[] cookies = request.getCookies();
-                    String jwtToken = null;
+                    String username = (String) accessor.getSessionAttributes().get("username");
 
-                    if (cookies != null) {
-                        for (Cookie cookie : cookies) {
-                            if ("jwt".equals(cookie.getName())) {
-                                jwtToken = cookie.getValue();
-                                break;
-                            }
-                        }
-                    }
-
-                    if (jwtToken != null) {
-                        String username = jwtService.extractUsername(jwtToken);
+                    if (username != null) {
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                        UsernamePasswordAuthenticationToken authentication =
+                        UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-
-                        accessor.setUser(authentication);
+                        accessor.setUser(auth);
                     }
                 }
+
                 return message;
             }
         });

@@ -8,11 +8,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class AccountCustomDaoImpl implements AccountCustomDAO {
+public class AccountRepositoryImpl implements AccountCustomDAO {
     private final MongoTemplate mongoTemplate;
 
     @Autowired
-    public AccountCustomDaoImpl(MongoTemplate mongoTemplate) {
+    public AccountRepositoryImpl(MongoTemplate mongoTemplate) {
         this.mongoTemplate = mongoTemplate;
     }
 
