@@ -46,12 +46,13 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(rq-> rq
                         .requestMatchers(
-                                "/api/user/login"
+                                "/api/user/login",
+                                "/api/auth/check"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user/register").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(Customizer.withDefaults())
-                .httpBasic(Customizer.withDefaults())
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(
                         ss -> ss.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 ).addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

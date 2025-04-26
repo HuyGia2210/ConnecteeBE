@@ -10,4 +10,6 @@ import iuh.fit.connectee.model.AppUser;
  */
 public interface AppUserCustomDAO {
     AppUser findAppUserByUsername(String username);
+
+    AppUser findAppUserByAccId(String accId);
 }

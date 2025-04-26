@@ -1,7 +1,9 @@
 package iuh.fit.connectee.config;
 
+import iuh.fit.connectee.model.AppUser;
 import iuh.fit.connectee.model.MessageType;
 import iuh.fit.connectee.service.JwtService;
+import iuh.fit.connectee.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -9,10 +11,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectEvent;
+import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
+
+import java.security.Principal;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * @author Le Tran Gia Huy
@@ -26,46 +34,55 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 @Slf4j
 public class WebSocketEventListener {
 
-    private final SimpMessageSendingOperations messagingTemplate;
-    private final JwtService jwtService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final UserService userService;
+
 
 //    @EventListener
-//    public void handelDisconnectEvent(
-//            SessionDisconnectEvent disconnectEvent
-//    ) {
-//        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(disconnectEvent.getMessage());
-//        String username = (String) headerAccessor.getSessionAttributes().get("username");
+//    public void handleConnectEvent(SessionConnectedEvent event) {
+//        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+//        Principal userPrincipal = accessor.getUser();
 //
-//        if(username != null) {
-//            log.info("AppUser Disconnected: " + username);
-//            var chatMessage = ChatMessage.builder()
-//                    .type(MessageType.LEAVE)
-//                    .sender(username)
-//                    .build();
-//            messagingTemplate.convertAndSend("/topic/public", chatMessage);
+//        if (userPrincipal != null) {
+//            String username = userPrincipal.getName();
+//            userService.connect(username);
+//
+//            List<Optional<AppUser>> friends = userService.findConnectedUsers(username);
+//            for (Optional<AppUser> friend : friends) {
+//                messagingTemplate.convertAndSendToUser(String.valueOf(friend), "/queue/status", username + " is online");
+//            }
 //        }
 //    }
 
     @EventListener
-    public void handleWebSocketConnectListener(SessionConnectEvent event) {
-        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        HttpServletRequest request = ((ServletServerHttpRequest) headerAccessor.getSessionAttributes().get("HTTP_REQUEST")).getServletRequest();
+    public void handleConnectEvent(SessionConnectedEvent event) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        Principal userPrincipal = accessor.getUser();
 
-        Cookie[] cookies = request.getCookies();
-        String jwtToken = null;
+        if (userPrincipal != null) {
+            String username = userPrincipal.getName(); // lấy từ JWT
+            userService.connect(username);
 
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("jwt".equals(cookie.getName())) {
-                    jwtToken = cookie.getValue();
-                    break;
-                }
+            List<String> connectedFriends = userService.findConnectedUsernames(username);
+            for (String friendUsername : connectedFriends) {
+                messagingTemplate.convertAndSendToUser(friendUsername, "/queue/status", username + " is online");
             }
         }
+    }
 
-        if (jwtToken != null) {
-            String username = jwtService.extractUsername(jwtToken);
-            System.out.println("User connected: " + username);
+    @EventListener
+    public void handleDisconnectEvent(SessionDisconnectEvent event) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        Principal userPrincipal = accessor.getUser();
+
+        if (userPrincipal != null) {
+            String username = userPrincipal.getName(); // lấy từ JWT
+            userService.disconnect(username);
+
+            List<String> connectedFriends = userService.findConnectedUsernames(username);
+            for (String friendUsername : connectedFriends) {
+                messagingTemplate.convertAndSendToUser(friendUsername, "/queue/status", username + " is offline");
+            }
         }
     }
 

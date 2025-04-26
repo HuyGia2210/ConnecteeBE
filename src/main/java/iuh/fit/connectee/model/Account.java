@@ -3,6 +3,7 @@ package iuh.fit.connectee.model;
 import iuh.fit.connectee.model.misc.Status;
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Account {
     @Id
     @EqualsAndHashCode.Include
+    @Indexed(unique = true)
     private String accId;
 
     private String username;

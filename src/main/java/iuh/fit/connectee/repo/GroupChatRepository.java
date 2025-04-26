@@ -1,16 +1,16 @@
 package iuh.fit.connectee.repo;
 
-import iuh.fit.connectee.model.Message;
+import iuh.fit.connectee.model.GroupChat;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 /**
  * @author Le Tran Gia Huy
- * @created 30/03/2025 - 8:59 PM
+ * @created 10/04/2025 - 4:27 PM
  * @project ConnecteeBE
  * @package iuh.fit.connectee.repo
  */
 
 @Repository
-public interface MessageRepository extends MongoRepository<Message, String> {
+public interface GroupChatRepository extends MongoRepository<GroupChat, String> {
 }

@@ -35,37 +35,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        /**
-         *
-         * Dòng code ở đây chỉ filter dựa trên JWT Token, muốn sử dụng cookie thì hãy xem dòng code dưới cùng
-         * Dòng code này để ở đây với mục địch tham khảo, không sử dụng trong ứng dụng thực tế
-         *
-         */
-        if(false){
-            // Bearer token
-            String authHeader = request.getHeader("Authorization");
-            String token = null;
-            String username = null;
-
-            if(authHeader != null && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-                username = jwtService.extractUsername(token);
-            }
-            if(username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = applicationContext.getBean(UserDetailsServiceImpl.class).loadUserByUsername(username);
-                if(jwtService.validateToken(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new
-                            UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-            }
-            filterChain.doFilter(request, response);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         /**
          * Dòng code ở đây kiểm tra cookie có chứa jwt token không, nếu có thì lấy ra token và username.
@@ -90,10 +59,14 @@ public class JwtFilter extends OncePerRequestFilter {
                     break;
                 }
             }
+        }else{
+            System.out.println("Cookie is null");
         }
 
         if(token != null){
             username = jwtService.extractUsername(token);
+        }else{
+            System.out.println("Token is null");
         }
 
         if(username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -112,6 +85,8 @@ public class JwtFilter extends OncePerRequestFilter {
                         .getContext()
                         .setAuthentication(authToken);
             }
+        }else{
+            System.out.println("Username is null");
         }
 
         filterChain.doFilter(request, response);
