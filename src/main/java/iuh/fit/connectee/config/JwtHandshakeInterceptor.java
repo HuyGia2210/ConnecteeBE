@@ -18,7 +18,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.net.URI;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author Le Tran Gia Huy
@@ -31,39 +34,30 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
-    private final JwtService jwtService;
-
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) {
+        String query = request.getURI().getQuery(); // nickname=...
 
-        if (request instanceof ServletServerHttpRequest servletRequest) {
-            HttpServletRequest httpServletRequest = servletRequest.getServletRequest();
-            Cookie[] cookies = httpServletRequest.getCookies();
+        if (query != null) {
+            Map<String,String> params = Arrays.stream(query.split("&"))
+                    .map(s -> s.split("=",2))
+                    .filter(a -> a.length==2)
+                    .collect(Collectors.toMap(a->a[0], a->a[1]));
 
-            if (cookies != null) {
-                for (Cookie cookie : cookies) {
-                    if ("jwt".equals(cookie.getName())) {
-                        String token = cookie.getValue();
-                        if (jwtService.validateTokenWithoutUserDetail(token)) {
-                            String username = jwtService.extractUsername(token);
-                            attributes.put("username", username);
-                            return true;
-                        }
-                    }
-                }
-            }else{
-                log.warn("WebSocket handshake rejected: invalid or missing JWT token");
+            String nickname = params.get("nickname");
+            if (nickname != null && !nickname.isBlank()) {
+                System.out.println("Đã nhận nickname: " + nickname);
+                attributes.put("nickname", nickname);
+                System.out.println("Nickname trong attributes: " + attributes.get("nickname"));
+                return true;
             }
         }
-
-        return false; // không cho phép kết nối nếu không có token hợp lệ
+        return false;
     }
 
     @Override
     public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                               WebSocketHandler wsHandler, Exception exception) {
-        // không cần xử lý gì ở đây
-    }
+                               WebSocketHandler wsHandler, Exception exception) {}
 }
 

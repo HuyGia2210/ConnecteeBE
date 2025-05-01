@@ -19,6 +19,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
+
 /**
  * @author Le Tran Gia Huy
  * @created 30/03/2025 - 7:19 PM
@@ -38,35 +40,38 @@ public class UserController {
 
     @MessageMapping("/chat")
     @SendTo("/topic/messages")
-    public ChatMessage handleChat(@Payload ChatMessage chatMessage) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
+    public ChatMessage handleChat(@Payload ChatMessage chatMessage, Principal principal) {
+        // Lấy nickname từ Principal
+        String nickname = principal.getName();
 
-        chatMessage.setSender(username);
+        chatMessage.setSender(nickname);
         return chatMessage;
     }
 
     @MessageMapping("/chat.private")
-    public void handlePrivateChat(@Payload ChatMessage chatMessage, SimpMessageHeaderAccessor headerAccessor) {
-        // Lấy username từ SecurityContextHolder (JWT)
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String sender = authentication.getName();
+    public void handlePrivateChat(@Payload ChatMessage chatMessage, Principal principal) {
+        String senderNickname = principal.getName();
+        System.out.println("Sender Nickname từ principal: " + senderNickname);
+        System.out.println("Sender Nickname từ chatMessage: " + chatMessage.getSender());
 
-        // Lưu tin nhắn vào database
-        Message message = new Message(sender, chatMessage.getReceiver(), chatMessage.getContent());
+        // Gán người gửi vào tin nhắn
+        chatMessage.setSender(senderNickname);
+
+        // Lưu vào database
+        Message message = new Message(senderNickname, chatMessage.getReceiver(), chatMessage.getContent());
         messageRepository.save(message);
 
-        // Gửi tin nhắn đến người nhận qua WebSocket
+        // Gửi tới người nhận
         messagingTemplate.convertAndSendToUser(chatMessage.getReceiver(), "/queue/messages", chatMessage);
     }
 
+
     @MessageMapping("/user.disconnectUser")
     @SendTo({"/user/topic", "/queue/messages"})
-    public String disconnect() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        userService.disconnect(username);
-        return username;
+    public String disconnect(Principal principal) {
+        String nickname = principal.getName();
+        userService.disconnect(nickname);
+        return nickname;
     }
 
     @Data

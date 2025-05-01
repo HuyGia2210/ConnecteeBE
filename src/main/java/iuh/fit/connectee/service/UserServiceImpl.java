@@ -8,6 +8,9 @@ import iuh.fit.connectee.repo.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -15,10 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -39,6 +39,7 @@ public class UserServiceImpl implements UserService{
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
     private JwtService jwtService;
     private final Set<String> onlineUsers = ConcurrentHashMap.newKeySet();
+    private final MongoTemplate mongoTemplate;
 
 
     @Autowired
@@ -46,17 +47,42 @@ public class UserServiceImpl implements UserService{
             AccountRepository theAccountRepository,
             AuthenticationManager theAuthenticationManager,
             JwtService theJwtService,
-            AppUserRepository theAppUserRepository
+            AppUserRepository theAppUserRepository, MongoTemplate mongoTemplate
     ) {
         accountRepository = theAccountRepository;
         authenticationManager = theAuthenticationManager;
         jwtService = theJwtService;
         appUserRepository = theAppUserRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     @Override
     public List<Account> findAll() {
         return accountRepository.findAll();
+    }
+
+    @Override
+    public AppUser findAppUser(String accID) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("accId").is(accID));
+        return mongoTemplate.findOne(query, AppUser.class);
+    }
+
+    public AppUser findAppUserByNickname(String nickname) {
+        return appUserRepository.findById(nickname).orElse(null);
+    }
+
+//    @Override
+//    public AppUser findAppUserByAbsoluteNickname(String nickname) {
+//        return appUserRepository.findAppUserByAbsoluteNickname(nickname);
+//    }
+
+    public boolean isUserExist(String username) {
+        return accountRepository.findByUsername(username) != null;
+    }
+
+    public boolean isNicknameExist(String nickname) {
+        return appUserRepository.findById(nickname).isPresent();
     }
 
     @Override
@@ -71,18 +97,22 @@ public class UserServiceImpl implements UserService{
         return appUserRepository.save(appUser);
     }
 
-    public void disconnect (String username) {
-        var account = accountRepository.findByUsername(username);
-        onlineUsers.remove(username);
+    public void disconnect (String nickname) {
+        var account = accountRepository.findById(
+                appUserRepository.findById(nickname).isPresent()?appUserRepository.findById(nickname).get().getAccId():""
+        ).orElse(null);
+        onlineUsers.remove(nickname);
         if(account != null){
             account.setStatus(Status.OFFLINE);
             accountRepository.save(account);
         }
     }
 
-    public void connect (String username) {
-        var account = accountRepository.findByUsername(username);
-        onlineUsers.add(username);
+    public void connect (String nickname) {
+        var account = accountRepository.findById(
+                appUserRepository.findById(nickname).isPresent()?appUserRepository.findById(nickname).get().getAccId():""
+        ).orElse(null);
+        onlineUsers.add(nickname);
         if(account != null){
             account.setStatus(Status.ONLINE);
             accountRepository.save(account);
@@ -97,7 +127,7 @@ public class UserServiceImpl implements UserService{
         AppUser appUser = appUserRepository.findAppUserByUsername(username);
         if (appUser == null) return List.of();
 
-        List<String> friendNicknames = appUser.getFriendNickNames();
+        List<String> friendNicknames = new ArrayList<>(appUser.getFriendList());
         return appUserRepository.findAllById(friendNicknames);
     }
 
@@ -107,7 +137,7 @@ public class UserServiceImpl implements UserService{
         AppUser appUser = appUserRepository.findAppUserByUsername(username);
         if (appUser == null) return List.of();
 
-        List<String> friendNicknames = appUser.getFriendNickNames();
+        List<String> friendNicknames = new ArrayList<>(appUser.getFriendList()) ;
         List<String> friendUsernames = new ArrayList<>();
 
         for (String nickname : friendNicknames) {
@@ -127,35 +157,55 @@ public class UserServiceImpl implements UserService{
     }
 
 
-    public List<String> findConnectedUsernames(String username) {
-        // 1. Tìm AppUser qua username (qua accId)
-        AppUser appUser = appUserRepository.findAppUserByUsername(username);
-        if (appUser == null) return List.of();
+//    public List<String> findConnectedUsernames(String nickname) {
+//        // 1. Tìm AppUser qua username (qua accId)
+//        AppUser appUser = appUserRepository.findById(nickname).isPresent()
+//                ? appUserRepository.findById(nickname).get()
+//                : null;
+//
+//        assert appUser != null;
+//        List<String> friendNicknames = new ArrayList<>(appUser.getFriendList());
+//        List<String> connectedUsernames = new ArrayList<>();
+//
+//        // 2. Duyệt từng nickname bạn bè
+//        for (String nick : friendNicknames) {
+//            Optional<AppUser> friendOpt = appUserRepository.findById(nick);
+//
+//            if (friendOpt.isPresent()) {
+//                String accId = friendOpt.get().getAccId();
+//
+//                // Tìm Account qua accId dùng findById()
+//                Optional<Account> accountOpt = accountRepository.findById(accId);
+//
+//                if (accountOpt.isPresent()) {
+//                    String friendUsername = accountOpt.get().getUsername();
+//
+//                    if (isOnline(friendUsername)) {
+//                        connectedUsernames.add(friendUsername);
+//                    }
+//                }
+//            }
+//        }
+//
+//        return connectedUsernames;
+//    }
 
-        List<String> friendNicknames = appUser.getFriendNickNames();
-        List<String> connectedUsernames = new ArrayList<>();
+    public List<String> findConnectedUsernames(String nickname) {
+        Optional<AppUser> optionalUser = appUserRepository.findById(nickname);
 
-        // 2. Duyệt từng nickname bạn bè
-        for (String nickname : friendNicknames) {
-            Optional<AppUser> friendOpt = appUserRepository.findById(nickname);
-
-            if (friendOpt.isPresent()) {
-                String accId = friendOpt.get().getAccId();
-
-                // Tìm Account qua accId dùng findById()
-                Optional<Account> accountOpt = accountRepository.findById(accId);
-
-                if (accountOpt.isPresent()) {
-                    String friendUsername = accountOpt.get().getUsername();
-
-                    if (isOnline(friendUsername)) {
-                        connectedUsernames.add(friendUsername);
-                    }
-                }
-            }
+        if (optionalUser.isEmpty()) {
+            System.out.println("AppUser not found for nickname: " + nickname);
+            return Collections.emptyList();
         }
 
-        return connectedUsernames;
+        AppUser appUser = optionalUser.get();
+
+        return new ArrayList<>(appUser.getFriendList());
+    }
+
+
+    public List<AppUser> findFriends(String nickname) {
+        return appUserRepository.findAppUserByRelativeNickname(nickname);
     }
 
     @Override

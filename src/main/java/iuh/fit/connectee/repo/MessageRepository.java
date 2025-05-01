@@ -1,6 +1,7 @@
 package iuh.fit.connectee.repo;
 
 import iuh.fit.connectee.model.Message;
+import iuh.fit.connectee.repo.customdao.MessageCustomDAO;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,5 +13,5 @@ import org.springframework.stereotype.Repository;
  */
 
 @Repository
-public interface MessageRepository extends MongoRepository<Message, String> {
+public interface MessageRepository extends MongoRepository<Message, String>, MessageCustomDAO {
 }

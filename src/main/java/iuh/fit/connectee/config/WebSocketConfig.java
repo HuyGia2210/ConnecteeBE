@@ -23,6 +23,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
 
 import java.util.List;
 
@@ -49,10 +50,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .addInterceptors(jwtHandshakeInterceptor)
-                .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .addInterceptors(jwtHandshakeInterceptor, new HttpSessionHandshakeInterceptor())
+                .setAllowedOrigins("http://localhost:5173");
     }
+
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -82,13 +83,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    String username = (String) accessor.getSessionAttributes().get("username");
+                    String nickname = (String) accessor.getSessionAttributes().get("nickname");
+                    System.out.println("Nickname configureClientInboundChannel: " + nickname);
 
-                    if (username != null) {
-                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                        UsernamePasswordAuthenticationToken auth =
-                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                        accessor.setUser(auth);
+                    if (nickname != null) {
+                        accessor.setUser(() -> nickname); // 👈 Đặt lại Principal là nickname
                     }
                 }
 

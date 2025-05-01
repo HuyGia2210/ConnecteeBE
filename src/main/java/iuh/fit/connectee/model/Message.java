@@ -23,23 +23,20 @@ public class Message {
     private String sender; // nickname của người gửi
     private String receiver; // nickname của người nhận
     private String content; // Nội dung tin nhắn
-    private String groupId;
     private long timestamp; // Thời gian gửi tin
 
     public Message(String sender, String receiver, String content) {
         this.sender = sender;
         this.receiver = receiver;
         this.content = content;
-        this.groupId = null;
         this.timestamp = System.currentTimeMillis();
     }
 
-    public Message(String sender, String receiver, String content, String groupId) {
-        this.sender = sender;
-        this.receiver = null;
-        this.content = content;
-        this.timestamp = System.currentTimeMillis();
-        this.groupId = groupId;
-    }
+//    public Message(String sender, String content) {
+//        this.sender = sender;
+//        this.receiver = null;
+//        this.content = content;
+//        this.timestamp = System.currentTimeMillis();
+//    }
 }
 
