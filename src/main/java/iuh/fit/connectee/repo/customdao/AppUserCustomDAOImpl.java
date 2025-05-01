@@ -6,7 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * @author Le Tran Gia Huy
@@ -27,14 +31,40 @@ public class AppUserCustomDAOImpl implements AppUserCustomDAO {
 
     @Override
     public AppUser findAppUserByUsername(String username) {
-        String accId = mongoTemplate.findById(username, Account.class).getAccId();
+        Query accountQuery = new Query();
+        accountQuery.addCriteria(Criteria.where("username").is(username));
+        Account account = mongoTemplate.findOne(accountQuery, Account.class);
+
+        if (account == null) {
+            throw new UsernameNotFoundException("Account not found with username: " + username);
+        }
+
         Query query = new Query();
-        query.addCriteria(Criteria.where("accId").is(accId));
+        query.addCriteria(Criteria.where("accId").is(account.getAccId()));
         return mongoTemplate.findOne(query, AppUser.class);
     }
 
+
+    @Override
+    public List<AppUser> findAppUserByRelativeNickname(String nickname) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("nickname").regex(".*" + Pattern.quote(nickname) + ".*", "i")); // "i" = ignore case
+
+        return mongoTemplate.find(query, AppUser.class);
+    }
+
+    @Override
+    public AppUser findAppUserByAbsoluteNickname(String nickname) {
+        Query appUserQuery = new Query();
+        appUserQuery.addCriteria(Criteria.where("nickname").is(nickname));
+        return mongoTemplate.findOne(appUserQuery, AppUser.class);
+    }
+
+
     @Override
     public AppUser findAppUserByAccId(String accId) {
-        return null;
+        Query appUserQuery = new Query();
+        appUserQuery.addCriteria(Criteria.where("accId").is(accId));
+        return mongoTemplate.findOne(appUserQuery, AppUser.class);
     }
 }

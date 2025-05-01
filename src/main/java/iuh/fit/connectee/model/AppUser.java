@@ -1,7 +1,6 @@
 package iuh.fit.connectee.model;
 
 import iuh.fit.connectee.model.misc.Gender;
-import iuh.fit.connectee.model.misc.Status;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,8 +9,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * @author Le Tran Gia Huy
@@ -28,13 +27,14 @@ public class AppUser {
     @Id
     @EqualsAndHashCode.Include
     @Indexed(unique = true)
-    private String nickName;
+    private String nickname;
 
     private String accId;
     private String fullName;
     private LocalDate dob;
     private Gender gender;
     private String email;
-    private List<String> friendNickNames = new ArrayList<>();
-    private List<String> groupChatId = new ArrayList<>();
+    private Set<String> friendList = new LinkedHashSet<>();
+//    private Set<String> friendRequestSendingList = new LinkedHashSet<>();
+    private Set<String> friendRequests = new LinkedHashSet<>();
 }

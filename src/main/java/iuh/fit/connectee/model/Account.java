@@ -24,7 +24,12 @@ public class Account {
     @Indexed(unique = true)
     private String accId;
 
+    @Indexed(unique = true)
     private String username;
+
     private String password;
+
+    private Setting setting;
+
     private Status status;
 }

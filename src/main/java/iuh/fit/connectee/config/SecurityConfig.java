@@ -21,6 +21,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
 
@@ -32,7 +34,7 @@ import java.util.List;
 *@author Le Tran Gia Huy
 */
 @Configuration @EnableWebSecurity @RequiredArgsConstructor
-public class SecurityConfig {
+public class SecurityConfig implements WebMvcConfigurer {
 
     @Autowired
     private UserDetailsService userDetailsService;
@@ -47,9 +49,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(rq-> rq
                         .requestMatchers(
                                 "/api/user/login",
-                                "/api/auth/check"
+                                "/api/auth/check",
+                                "api/user/test",
+                                "/ws",
+                                "api/user/get-nickname-by-username",
+                                "api/user/get-username-by-nickname"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/user/check-valid-username").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/user/check-valid-nickname").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -86,5 +94,12 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/ws/**")  // Đảm bảo endpoint WebSocket được phép CORS
+                .allowedOrigins("http://localhost:5173")  // Địa chỉ client
+                .allowCredentials(true);  // Cho phép gửi cookie
     }
 }

@@ -2,10 +2,12 @@ package iuh.fit.connectee.config;
 
 import iuh.fit.connectee.model.AppUser;
 import iuh.fit.connectee.model.MessageType;
+import iuh.fit.connectee.repo.customdao.AppUserCustomDAOImpl;
 import iuh.fit.connectee.service.JwtService;
 import iuh.fit.connectee.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -20,6 +22,7 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -36,6 +39,7 @@ public class WebSocketEventListener {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final UserService userService;
+    private final AppUserCustomDAOImpl appUserCustomDAOImpl;
 
 
 //    @EventListener
@@ -54,35 +58,64 @@ public class WebSocketEventListener {
 //        }
 //    }
 
+//    @EventListener
+//    public void handleConnectEvent(SessionConnectedEvent event) {
+//        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+//        Principal userPrincipal = accessor.getUser();
+//
+//        if (userPrincipal != null) {
+//            String username = userPrincipal.getName(); // lấy từ JWT
+//            userService.connect(username);
+//
+//            List<String> connectedFriends = userService.findConnectedUsernames(username);
+//            for (String friendUsername : connectedFriends) {
+//                messagingTemplate.convertAndSendToUser(friendUsername, "/queue/status", username + " is online");
+//            }
+//        }
+//    }
+
     @EventListener
     public void handleConnectEvent(SessionConnectedEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
-        Principal userPrincipal = accessor.getUser();
+        Principal user = accessor.getUser();
 
-        if (userPrincipal != null) {
-            String username = userPrincipal.getName(); // lấy từ JWT
-            userService.connect(username);
+        if (user == null) {
+            System.out.println("No principal");
+            return;
+        }
 
-            List<String> connectedFriends = userService.findConnectedUsernames(username);
-            for (String friendUsername : connectedFriends) {
-                messagingTemplate.convertAndSendToUser(friendUsername, "/queue/status", username + " is online");
-            }
+        AppUser appUser = appUserCustomDAOImpl.findAppUserByUsername(user.getName()); // Giờ sẽ là k1pp1s
+        String nickname = appUser.getNickname();
+        System.out.println("nickname: " + nickname);
+        userService.connect(nickname);
+
+        List<String> friends = userService.findConnectedUsernames(nickname);
+        for (String f : friends) {
+            messagingTemplate.convertAndSendToUser(f, "/queue/status", nickname + " is online");
         }
     }
+
+
 
     @EventListener
     public void handleDisconnectEvent(SessionDisconnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
-        Principal userPrincipal = accessor.getUser();
+        Principal user = accessor.getUser();
 
-        if (userPrincipal != null) {
-            String username = userPrincipal.getName(); // lấy từ JWT
-            userService.disconnect(username);
 
-            List<String> connectedFriends = userService.findConnectedUsernames(username);
-            for (String friendUsername : connectedFriends) {
-                messagingTemplate.convertAndSendToUser(friendUsername, "/queue/status", username + " is offline");
-            }
+        if (user == null) {
+            System.out.println("No principal");
+            return;
+        }
+
+        AppUser appUser = appUserCustomDAOImpl.findAppUserByUsername(user.getName());
+        String nickname = appUser.getNickname();
+        System.out.println("nickname: " + nickname);
+        userService.disconnect(nickname);
+
+        List<String> connectedFriends = userService.findConnectedUsernames(nickname);
+        for (String friendUsername : connectedFriends) {
+            messagingTemplate.convertAndSendToUser(friendUsername, "/queue/status", nickname + " is offline");
         }
     }
 
