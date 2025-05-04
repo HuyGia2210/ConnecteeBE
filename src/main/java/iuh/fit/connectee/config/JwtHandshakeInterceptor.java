@@ -47,9 +47,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
             String nickname = params.get("nickname");
             if (nickname != null && !nickname.isBlank()) {
-                System.out.println("Đã nhận nickname: " + nickname);
                 attributes.put("nickname", nickname);
-                System.out.println("Nickname trong attributes: " + attributes.get("nickname"));
                 return true;
             }
         }

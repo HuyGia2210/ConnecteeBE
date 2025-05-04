@@ -1,14 +1,14 @@
 package iuh.fit.connectee.model;
 
-import iuh.fit.connectee.model.misc.Status;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+
 /**
  * @author Le Tran Gia Huy
- * @created 29/03/2025 - 10:10 PM
+ * @created 02/05/2025 - 12:52 PM
  * @project ConnecteeBE
  * @package iuh.fit.connectee.model
  */
@@ -17,19 +17,26 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Setter
 @Document
 @NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class Account {
+public class EmbeddedAI {
     @Id
     @EqualsAndHashCode.Include
     @Indexed(unique = true)
-    private String accId;
+    private String id;
 
-    @Indexed(unique = true)
-    private String username;
+    private String nickname;
 
-    private String password;
+    private String prompt;
 
-    private Setting setting = new Setting();
+    private String result;
 
-    private Status status;
+    private long timestamp;
+
+    public EmbeddedAI(String nickname, String prompt, String result) {
+        this.nickname = nickname;
+        this.prompt = prompt;
+        this.result = result;
+        this.timestamp = System.currentTimeMillis();
+    }
 }

@@ -2,6 +2,8 @@ package iuh.fit.connectee.repo.customdao;
 
 import iuh.fit.connectee.model.Account;
 import iuh.fit.connectee.model.AppUser;
+import iuh.fit.connectee.model.misc.Status;
+import iuh.fit.connectee.repo.AccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -9,6 +11,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -23,10 +26,12 @@ import java.util.regex.Pattern;
 public class AppUserCustomDAOImpl implements AppUserCustomDAO {
 
     private final MongoTemplate mongoTemplate;
+    private final AccountRepository accountRepository;
 
     @Autowired
-    public AppUserCustomDAOImpl(MongoTemplate mongoTemplate) {
+    public AppUserCustomDAOImpl(MongoTemplate mongoTemplate, AccountRepository accountRepository) {
         this.mongoTemplate = mongoTemplate;
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -66,5 +71,21 @@ public class AppUserCustomDAOImpl implements AppUserCustomDAO {
         Query appUserQuery = new Query();
         appUserQuery.addCriteria(Criteria.where("accId").is(accId));
         return mongoTemplate.findOne(appUserQuery, AppUser.class);
+    }
+
+    @Override
+    public List<String> findOnlineFriendsWithNickname(String nickname) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("nickname").is(nickname));
+        AppUser appUsers = mongoTemplate.findOne(query, AppUser.class);
+        List<String> onlineFriends = new ArrayList<>();
+        appUsers.getFriendList().forEach(
+                f -> {
+                    final var b =
+                            accountRepository.findById(findAppUserByAbsoluteNickname(f).getAccId()).get().getStatus().equals(Status.ONLINE) ?
+                            onlineFriends.add(f) : null;
+                }
+        );
+        return onlineFriends;
     }
 }

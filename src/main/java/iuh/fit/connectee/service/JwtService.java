@@ -1,6 +1,5 @@
 package iuh.fit.connectee.service;
 
-import io.github.cdimascio.dotenv.Dotenv;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -32,9 +31,8 @@ public class JwtService {
     public JwtService() {
         try{
             // Load từ biến môi trường hoặc file .env
-            Dotenv dotenv = Dotenv.load();
-            key = dotenv.get("SECRETE_KEY");
-            System.out.println(key);
+            key = System.getenv("SECRETE_KEY");
+
         }catch(Exception e){
             e.printStackTrace();
             throw new RuntimeException(e);

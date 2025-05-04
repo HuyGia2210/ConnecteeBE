@@ -51,7 +51,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .addInterceptors(jwtHandshakeInterceptor, new HttpSessionHandshakeInterceptor())
-                .setAllowedOrigins("http://localhost:5173");
+                .setAllowedOrigins("http://localhost:5173", "https://connectee-beta.vercel.app");
     }
 
 
@@ -84,7 +84,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String nickname = (String) accessor.getSessionAttributes().get("nickname");
-                    System.out.println("Nickname configureClientInboundChannel: " + nickname);
 
                     if (nickname != null) {
                         accessor.setUser(() -> nickname); // 👈 Đặt lại Principal là nickname
