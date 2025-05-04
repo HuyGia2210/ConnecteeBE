@@ -15,4 +15,5 @@ public interface AppUserCustomDAO {
     List<AppUser> findAppUserByRelativeNickname(String nickname);
     AppUser findAppUserByAbsoluteNickname(String nickname);
     AppUser findAppUserByAccId(String accId);
+    List<String> findOnlineFriendsWithNickname(String nickname);
 }

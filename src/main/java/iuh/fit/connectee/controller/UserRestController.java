@@ -2,6 +2,7 @@ package iuh.fit.connectee.controller;
 
 import iuh.fit.connectee.model.Account;
 import iuh.fit.connectee.model.AppUser;
+import iuh.fit.connectee.model.Setting;
 import iuh.fit.connectee.model.misc.Gender;
 import iuh.fit.connectee.model.misc.Status;
 import iuh.fit.connectee.repo.AccountRepository;
@@ -23,6 +24,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Le Tran Gia Huy
@@ -40,8 +42,6 @@ public class UserRestController {
 
     @GetMapping("/test")
     public ResponseEntity<?> test(@RequestParam("nickname") String nickname) {
-        System.out.println("Nickname: " + nickname);
-        System.out.println(userService.findFriends(nickname).getFirst());
         return ResponseEntity.ok(userService.findFriends(nickname).getFirst()) ;
     }
 
@@ -133,14 +133,9 @@ public class UserRestController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT không hợp lệ");
         }
 
-        System.out.println("Nickname: " + nickname);
         AppUser friend = userService.findFriends(nickname).getFirst();
-        System.out.println("Friend: " + friend);
-        System.out.println("Username: " + username);
         String accID = accountRepository.findByUsername(username).getAccId();
-        System.out.println("AccID: " + accID);
         AppUser appUser = userService.findAppUser(accID);
-        System.out.println("AppUser: " + appUser);
         friend.setFriendRequests(Collections.singleton(appUser.getNickname()));
         appUserRepository.save(friend);
 
@@ -224,7 +219,6 @@ public class UserRestController {
         appUserRepository.save(appUser);
 
         AppUser friend = userService.findFriends(friendRequestsNickname).getFirst();
-        System.out.println("Friend: " + friend.getNickname());
         friend.getFriendList().add(appUser.getNickname());
         appUserRepository.save(friend);
 
@@ -261,7 +255,6 @@ public class UserRestController {
         tempUser.setGender(requestForm.gender);
         tempUser.setDob(requestForm.dob);
         AppUser savedAppUser = userService.saveAppUser(tempUser);
-        System.out.println(savedAppUser);
 
         String token  = userService.verifyWithoutAuth(createdAcc.getUsername());
         // Tạo HTTP-only cookie
@@ -282,7 +275,8 @@ public class UserRestController {
     }
 
     @GetMapping("/auth/check")
-    @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+    @CrossOrigin(origins = {"http://localhost:5173", "https://connectee-beta.vercel.app"}, allowCredentials = "true")
+
     public ResponseEntity<?> checkAuth(HttpServletRequest request) {
         String token = null;
         Cookie[] cookies = request.getCookies();
@@ -302,13 +296,15 @@ public class UserRestController {
 
 
     @GetMapping("/")
-    @CrossOrigin(origins = "http://localhost:5173")
+    @CrossOrigin(origins = {"http://localhost:5173", "https://connectee-beta.vercel.app"})
+
     public String greet(HttpServletRequest request) {
         return "Hello, " + request.getSession().getId();
     }
 
     @GetMapping("/csrf-token")
-    @CrossOrigin(origins = "http://localhost:5173")
+    @CrossOrigin(origins = {"http://localhost:5173", "https://connectee-beta.vercel.app"})
+
     public CsrfToken getCsrfToken(HttpServletRequest request) {
         return (CsrfToken) request.getAttribute("_csrf");
     }
@@ -379,10 +375,8 @@ public class UserRestController {
     @GetMapping("/get-nickname-by-username")
     public ResponseEntity<?> getNicknameByUsername(@RequestParam("username") String username) {
         String accId = accountRepository.findByUsername(username).getAccId();
-        System.out.println("AccId: " + accId);
 
         AppUser appUser = userService.findAppUser(accId);
-        System.out.println("AppUser: " + appUser);
 
         return ResponseEntity.ok(appUser.getNickname());
     }
@@ -390,19 +384,197 @@ public class UserRestController {
     @GetMapping("/get-username-by-nickname")
     public ResponseEntity<?> getUsernameByNickname(@RequestParam("nickname") String nickname) {
         AppUser appUser = appUserRepository.findById(nickname).isPresent()?appUserRepository.findById(nickname).get():null;
-        System.out.println("AppUser: " + appUser);
 
         if(appUser==null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
         }
         String accId = appUser.getAccId();
         Account account = accountRepository.findById(accId).orElse(null);
-        System.out.println("Account: " + account);
         if(account==null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy tài khoản");
         }
         return ResponseEntity.ok(account.getUsername());
     }
+
+    @GetMapping("/get-fullName-by-nickname")
+    public ResponseEntity<?> getFullNameByNickname(@RequestParam("nickname") String nickname) {
+        AppUser appUser = appUserRepository.findById(nickname).isPresent()?appUserRepository.findById(nickname).get():null;
+
+
+        if(appUser==null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
+        }
+        return ResponseEntity.ok(appUser.getFullName());
+    }
+
+    @GetMapping("/get-appUser-by-nickname")
+    public ResponseEntity<?> getAppUserByNickname(@RequestParam("nickname") String nickname, HttpServletRequest request) {
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // 2️⃣ Kiểm tra token có tồn tại không
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không có JWT token");
+        }
+
+        // 3️⃣ Giải mã JWT token để lấy username
+        String username;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT không hợp lệ");
+        }
+
+        AppUser appUser = appUserRepository.findById(nickname).isPresent()?appUserRepository.findById(nickname).get():null;
+
+        if(appUser==null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
+        }
+        return ResponseEntity.ok(appUser);
+    }
+
+    @GetMapping("/get-online-friends-by-nickname")
+    public ResponseEntity<?> getOnlineFriendsByNickname(@RequestParam("nickname") String nickname, HttpServletRequest request) {
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // 2️⃣ Kiểm tra token có tồn tại không
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không có JWT token");
+        }
+
+        // 3️⃣ Giải mã JWT token để lấy username
+        String username;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT không hợp lệ");
+        }
+
+        AppUser appUser = appUserRepository.findById(nickname).isPresent()?appUserRepository.findById(nickname).get():null;
+        if(appUser==null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
+        }
+
+        return ResponseEntity.ok(appUserRepository.findOnlineFriendsWithNickname(nickname));
+    }
+
+    @GetMapping("/get-settings")
+    public ResponseEntity<?> getSettings(HttpServletRequest request) {
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // 2️⃣ Kiểm tra token có tồn tại không
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không có JWT token");
+        }
+
+        // 3️⃣ Giải mã JWT token để lấy username
+        String username;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT không hợp lệ");
+        }
+
+        Setting setting = accountRepository.findById(accountRepository.findByUsername(username).getAccId()).get().getSetting();
+        return ResponseEntity.ok(setting);
+    }
+
+    @PostMapping("/update-settings")
+    public ResponseEntity<?> updateSettings(@RequestBody Setting setting, HttpServletRequest request) {
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // 2️⃣ Kiểm tra token có tồn tại không
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không có JWT token");
+        }
+
+        // 3️⃣ Giải mã JWT token để lấy username
+        String username;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT không hợp lệ");
+        }
+
+        Account account = accountRepository.findByUsername(username);
+        account.setSetting(setting);
+        accountRepository.save(account);
+
+        return ResponseEntity.ok(true);
+    }
+
+    @PostMapping("/update-information")
+    public ResponseEntity<?> updateInformation(@RequestBody ChangingInfomationForm info, HttpServletRequest request){
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // 2️⃣ Kiểm tra token có tồn tại không
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không có JWT token");
+        }
+
+        // 3️⃣ Giải mã JWT token để lấy username
+        String username;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT không hợp lệ");
+        }
+        AppUser appUser = appUserRepository.findAppUserByUsername(username);
+
+        appUser.setFullName(info.getFullName());
+        appUser.setEmail(info.getEmail());
+        appUser.setDob(info.getDob());
+        appUser.setGender(info.getGender());
+
+        appUserRepository.save(appUser);
+        return ResponseEntity.ok(true);
+    }
+
+
 
     @Data
     static class RegisterRequest {
@@ -413,6 +585,14 @@ public class UserRestController {
         private Gender gender;
         private String email;
         private String password;
+    }
+
+    @Data
+    static class ChangingInfomationForm{
+        private String fullName;
+        private LocalDate dob;
+        private Gender gender;
+        private String email;
     }
 }
 

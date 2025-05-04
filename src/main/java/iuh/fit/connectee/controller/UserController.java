@@ -6,6 +6,7 @@ import iuh.fit.connectee.repo.AppUserRepository;
 import iuh.fit.connectee.repo.MessageRepository;
 import iuh.fit.connectee.service.JwtService;
 import iuh.fit.connectee.service.UserService;
+import iuh.fit.connectee.utils.AESUtil;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -38,6 +39,7 @@ public class UserController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MessageRepository messageRepository;
 
+
     @MessageMapping("/chat")
     @SendTo("/topic/messages")
     public ChatMessage handleChat(@Payload ChatMessage chatMessage, Principal principal) {
@@ -51,14 +53,12 @@ public class UserController {
     @MessageMapping("/chat.private")
     public void handlePrivateChat(@Payload ChatMessage chatMessage, Principal principal) {
         String senderNickname = principal.getName();
-        System.out.println("Sender Nickname từ principal: " + senderNickname);
-        System.out.println("Sender Nickname từ chatMessage: " + chatMessage.getSender());
 
         // Gán người gửi vào tin nhắn
         chatMessage.setSender(senderNickname);
 
         // Lưu vào database
-        Message message = new Message(senderNickname, chatMessage.getReceiver(), chatMessage.getContent());
+        Message message = new Message(senderNickname, chatMessage.getReceiver(), AESUtil.encrypt(chatMessage.getContent()));
         messageRepository.save(message);
 
         // Gửi tới người nhận

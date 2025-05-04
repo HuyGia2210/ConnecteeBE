@@ -53,7 +53,14 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "api/user/test",
                                 "/ws",
                                 "api/user/get-nickname-by-username",
-                                "api/user/get-username-by-nickname"
+                                "api/user/get-username-by-nickname",
+                                "api/user/get-fullName-by-nickname",
+                                "api/stat/get-number-of-app-user",
+                                "api/stat/get-number-of-messages",
+                                "api/stat/get-number-of-online-user",
+                                "api/stat/get-all-app-user",
+                                "api/admin/add-admin",
+                                "api/admin/check-valid-admin-acc"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/user/check-valid-username").permitAll()
@@ -86,7 +93,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // 👈 Đổi thành URL frontend của bạn
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "https://connectee-beta.vercel.app")); // 👈 Đổi thành URL frontend của bạn
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // 👈 Cho phép gửi cookie/token HTTP-only
@@ -99,7 +106,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/ws/**")  // Đảm bảo endpoint WebSocket được phép CORS
-                .allowedOrigins("http://localhost:5173")  // Địa chỉ client
+                .allowedOrigins("http://localhost:5173", "https://connectee-beta.vercel.app")  // Địa chỉ client
                 .allowCredentials(true);  // Cho phép gửi cookie
     }
 }

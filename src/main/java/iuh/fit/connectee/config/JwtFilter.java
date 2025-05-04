@@ -59,14 +59,10 @@ public class JwtFilter extends OncePerRequestFilter {
                     break;
                 }
             }
-        }else{
-            System.out.println("Cookie is null");
         }
 
         if(token != null){
             username = jwtService.extractUsername(token);
-        }else{
-            System.out.println("Token is null");
         }
 
         if(username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -85,8 +81,6 @@ public class JwtFilter extends OncePerRequestFilter {
                         .getContext()
                         .setAuthentication(authToken);
             }
-        }else{
-            System.out.println("Username is null");
         }
 
         filterChain.doFilter(request, response);

@@ -2,6 +2,8 @@ package iuh.fit.connectee.config;
 
 import iuh.fit.connectee.model.AppUser;
 import iuh.fit.connectee.model.MessageType;
+import iuh.fit.connectee.repo.AccountRepository;
+import iuh.fit.connectee.repo.AppUserRepository;
 import iuh.fit.connectee.repo.customdao.AppUserCustomDAOImpl;
 import iuh.fit.connectee.service.JwtService;
 import iuh.fit.connectee.service.UserService;
@@ -21,6 +23,7 @@ import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +43,8 @@ public class WebSocketEventListener {
     private final SimpMessagingTemplate messagingTemplate;
     private final UserService userService;
     private final AppUserCustomDAOImpl appUserCustomDAOImpl;
+    private final AppUserRepository appUserRepository;
+    private final AccountRepository accountRepository;
 
 
 //    @EventListener
@@ -80,18 +85,20 @@ public class WebSocketEventListener {
         Principal user = accessor.getUser();
 
         if (user == null) {
-            System.out.println("No principal");
             return;
         }
 
         AppUser appUser = appUserCustomDAOImpl.findAppUserByUsername(user.getName()); // Giờ sẽ là k1pp1s
         String nickname = appUser.getNickname();
-        System.out.println("nickname: " + nickname);
         userService.connect(nickname);
 
         List<String> friends = userService.findConnectedUsernames(nickname);
+        Map<String, String> payload = new HashMap<>();
+        payload.put("nickname", nickname);
+        payload.put("isOnline", String.valueOf(true));
         for (String f : friends) {
-            messagingTemplate.convertAndSendToUser(f, "/queue/status", nickname + " is online");
+            String username = accountRepository.findById(appUserRepository.findById(f).get().getAccId()).get().getUsername();
+            messagingTemplate.convertAndSendToUser(username, "/queue/status", payload);
         }
     }
 
@@ -104,18 +111,20 @@ public class WebSocketEventListener {
 
 
         if (user == null) {
-            System.out.println("No principal");
             return;
         }
 
         AppUser appUser = appUserCustomDAOImpl.findAppUserByUsername(user.getName());
         String nickname = appUser.getNickname();
-        System.out.println("nickname: " + nickname);
         userService.disconnect(nickname);
 
-        List<String> connectedFriends = userService.findConnectedUsernames(nickname);
-        for (String friendUsername : connectedFriends) {
-            messagingTemplate.convertAndSendToUser(friendUsername, "/queue/status", nickname + " is offline");
+        List<String> friends = userService.findConnectedUsernames(nickname);
+        Map<String, String> payload = new HashMap<>();
+        payload.put("nickname", nickname);
+        payload.put("isOnline", String.valueOf(false));
+        for (String f : friends) {
+            String username = accountRepository.findById(appUserRepository.findById(f).get().getAccId()).get().getUsername();
+            messagingTemplate.convertAndSendToUser(username, "/queue/status", payload);
         }
     }
 
