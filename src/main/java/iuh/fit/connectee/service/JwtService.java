@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -26,17 +27,11 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
+    @Value("${secrete.key}")
     private String key = "";
 
     public JwtService() {
-        try{
-            // Load từ biến môi trường hoặc file .env
-            key = System.getenv("SECRETE_KEY");
 
-        }catch(Exception e){
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
     }
 
     public String generateToken(String username) {

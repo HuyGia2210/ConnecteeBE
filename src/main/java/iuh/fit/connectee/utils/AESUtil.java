@@ -1,5 +1,9 @@
 package iuh.fit.connectee.utils;
 
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
@@ -11,13 +15,22 @@ import java.util.Base64;
  * @package iuh.fit.connectee.utils
  */
 
+@Component
 public class AESUtil {
 
-    private static final String SECRET = System.getenv("ENCRYPTION_KEY");;
+    @Value("${encryption.key}")
+    private String secreteKey;
+
+    private static String SECRETE;
+
+    @PostConstruct
+    public void init() {
+        SECRETE = secreteKey;  // Gán giá trị từ instance vào biến static
+    }
 
     public static String encrypt(String strToEncrypt) {
         try {
-            SecretKeySpec secretKey = new SecretKeySpec(SECRET.getBytes(), "AES");
+            SecretKeySpec secretKey = new SecretKeySpec(SECRETE.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes()));
@@ -28,7 +41,7 @@ public class AESUtil {
 
     public static String decrypt(String strToDecrypt) {
         try {
-            SecretKeySpec secretKey = new SecretKeySpec(SECRET.getBytes(), "AES");
+            SecretKeySpec secretKey = new SecretKeySpec(SECRETE.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, secretKey);
             return new String(cipher.doFinal(Base64.getDecoder().decode(strToDecrypt)));
