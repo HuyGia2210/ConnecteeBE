@@ -11,7 +11,7 @@ COPY . /app
 RUN ./mvnw clean package -DskipTests
 
 # Chạy ứng dụng với lệnh `java -jar` (thay "target/your-app.jar" bằng tên file jar của bạn)
-CMD ["java", "-jar", "target/your-app.jar"]
+CMD ["java", "-jar", "target/Connectee-0.0.1-SNAPSHOT.jar"]
 
 # Mở port mà ứng dụng sẽ chạy
 EXPOSE 8080
