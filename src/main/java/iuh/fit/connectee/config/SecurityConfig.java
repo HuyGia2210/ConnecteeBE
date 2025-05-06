@@ -50,22 +50,23 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers(
                                 "/api/user/login",
                                 "/api/auth/check",
-                                "api/user/test",
+                                "/api/user/test",
+                                "/api/user/get-nickname",
                                 "/ws",
-                                "api/user/get-nickname-by-username",
-                                "api/user/get-username-by-nickname",
-                                "api/user/get-fullName-by-nickname",
-                                "api/stat/get-number-of-app-user",
-                                "api/stat/get-number-of-messages",
-                                "api/stat/get-number-of-online-user",
-                                "api/stat/get-all-app-user",
-                                "api/admin/add-admin",
-                                "api/admin/check-valid-admin-acc"
+                                "/api/user/get-nickname-by-username",
+                                "/api/user/get-username-by-nickname",
+                                "/api/user/get-fullName-by-nickname",
+                                "/api/stat/get-number-of-app-user",
+                                "/api/stat/get-number-of-messages",
+                                "/api/stat/get-number-of-online-user",
+                                "/api/stat/get-all-app-user",
+                                "/api/admin/add-admin",
+                                "/api/admin/check-valid-admin-acc"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/user/check-valid-username").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/user/check-valid-nickname").permitAll()
-                        .anyRequest().authenticated())
+                        .anyRequest().permitAll())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(
@@ -97,6 +98,8 @@ public class SecurityConfig implements WebMvcConfigurer {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // 👈 Cho phép gửi cookie/token HTTP-only
+
+        configuration.setExposedHeaders(List.of("Set-Cookie")); // 👈 Expose Set-Cookie header to the client
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
