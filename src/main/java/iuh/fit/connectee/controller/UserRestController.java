@@ -266,7 +266,7 @@ public class UserRestController {
                 .httpOnly(true)
                 .path("/")
                 .maxAge(10 * 24 * 60 * 60)
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
@@ -314,30 +314,32 @@ public class UserRestController {
             @RequestBody LoginRequest request,
             HttpServletResponse response
     ) {
-
         String token  = userService.verify(request.getUsername(), request.getPassword());
-        // Tạo HTTP-only cookie
-        Cookie cookie = new Cookie("jwt", token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true); // Chỉ gửi trên HTTPS
-        cookie.setPath("/"); // Cookie áp dụng cho toàn bộ trang web
-        cookie.setMaxAge(10 * 24 * 60 * 60); // 10 ngày
-
-        // Đính kèm cookie vào response
-        response.addCookie(cookie);
+        final ResponseCookie responseCookie = ResponseCookie
+                .from("jwt", token)
+                .secure(true)
+                .httpOnly(true)
+                .path("/")
+                .maxAge(10 * 24 * 60 * 60)
+                .sameSite("None")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
         return ResponseEntity.ok(token);
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("jwt", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0); // Xóa cookie ngay lập tức
+        final ResponseCookie responseCookie = ResponseCookie
+                .from("jwt", "")
+                .secure(true)
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("None")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
-        response.addCookie(cookie);
         return ResponseEntity.ok("Logged out successfully");
     }
 
